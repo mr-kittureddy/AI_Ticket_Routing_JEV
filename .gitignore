@@ -1,0 +1,29 @@
+# Secrets (the .env.example files are tracked)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+npm-debug.log*
+
+# Local state
+*.db
+*.sqlite3
+chroma_store/
+/data/
+
+# Editors, OS and logs
+.idea/
+.vscode/
+.DS_Store
+*.log

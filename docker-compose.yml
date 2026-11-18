@@ -1,0 +1,61 @@
+name: ticket-routing
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ticket_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-locally}
+      POSTGRES_DB: ${POSTGRES_DB:-ticket_routing}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production          # JSON logs
+      DEBUG: "false"                   # also disables /docs and /openapi.json
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-ticket_user}:${POSTGRES_PASSWORD:-change-me-locally}@db:5432/${POSTGRES_DB:-ticket_routing}
+      CHROMA_PERSIST_DIR: /data/chroma
+      # A JSON list. The dashboard is served on host port 5173, so keep these origins in sync with the frontend port.
+      CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
+      # Leave the keys blank (or masked) for deterministic simulator mode; set real keys for live engines.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-typesafe/jev-1.14}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      JEV_LATENCY_THRESHOLD_MS: ${JEV_LATENCY_THRESHOLD_MS:-500}
+      ENFORCE_RBAC_ON_PROCESS_TICKET: ${ENFORCE_RBAC_ON_PROCESS_TICKET:-false}
+    volumes:
+      - chroma_data:/data/chroma
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The URL the BROWSER uses to reach the backend (not the container name).
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
+  chroma_data:

@@ -1,0 +1,19 @@
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.venv
+venv
+.git
+.gitignore
+
+# Tests and local tooling are not shipped in the runtime image
+tests
+pytest.ini
+
+# Local state and secrets
+*.db
+*.sqlite3
+chroma_store
+.env
+.env.*
+!.env.example
